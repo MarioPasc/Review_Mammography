@@ -52,10 +52,6 @@ keyword_sets:
     - "detection"
     - "classification"
     - "localization"
-    - "diagnosis"
-    - "prediction"
-    - "image analysis"
-    - "image processing"
     - "segment"
 
 arxiv_categories:
@@ -64,6 +60,21 @@ arxiv_categories:
   - "eess.IV"  # Image and Video Processing
   - "stat.ML"  # Statistics - Machine Learning
 
+# Semantic Scholar specific parameters
+semantic_scholar_api_key: ""  # Optional: Add your API key if you have one
+
+semantic_scholar_publication_types:
+  - "JournalArticle"
+  - "Conference"
+  
+semantic_scholar_fields_of_study:
+  - "Computer Science"
+  - "Engineering"
+  - "Mathematics"
+
+semantic_scholar_min_citation_count: 5
+semantic_scholar_open_access_only: true
+semantic_scholar_sort: "citationCount:desc"  # Options: citationCount:desc, publicationDate:desc, etc.
 
 # Date range in YYYY/MM/DD format
 date_range:
@@ -82,4 +93,4 @@ output_prefix: "data/ncbi_results"
 free_full_text: true
 
 # Keywords to exclude
-exclude_keywords: ["systematic review", "meta-analysis", "review", "meta-analysis"]
+exclude_keywords: ["systematic review", "meta-analysis", "review", "meta-analysis", "mri"]

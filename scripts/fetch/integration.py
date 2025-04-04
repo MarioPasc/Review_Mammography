@@ -17,6 +17,7 @@ from datetime import datetime
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from fetch import arxiv_fetch  # type: ignore
 from fetch import ncbi_fetch as ncbi
+from fetch import semantic_scholar_fetch
 
 
 def fetch_from_all_sources(
@@ -223,10 +224,8 @@ def main(config_file: str, output_file: str = "data/combined_results.csv") -> No
 
     # Add arXiv
     sources["arXiv"] = arxiv_fetch.search_from_yaml
-
-    # Add NCBI if available
-    if ncbi is not None:
-        sources["Pubmed"] = ncbi.search_from_yaml
+    sources["Pubmed"] = ncbi.search_from_yaml
+    sources["SemanticScholar"] = semantic_scholar_fetch.search_from_yaml
 
     # Fetch from all sources
     results, csv_files = fetch_from_all_sources(config_file, sources)
@@ -245,12 +244,6 @@ if __name__ == "__main__":
     # Default configuration and output files
     config_file = "./scripts/fetch/parameters.yaml"
     output_file = "./data/combined_results.csv"
-
-    # Check for command line arguments
-    if len(sys.argv) > 1:
-        config_file = sys.argv[1]
-    if len(sys.argv) > 2:
-        output_file = sys.argv[2]
 
     # Run the main function
     main(config_file, output_file)
