@@ -54,6 +54,9 @@ keyword_sets:
     - "localization"
     - "diagnosis"
     - "prediction"
+    - "image analysis"
+    - "image processing"
+    - "segment"
 
 arxiv_categories:
   - "cs.CV"  # Computer Vision

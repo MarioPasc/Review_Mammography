@@ -226,7 +226,7 @@ def main(config_file: str, output_file: str = "data/combined_results.csv") -> No
 
     # Add NCBI if available
     if ncbi is not None:
-        sources["Entrez"] = ncbi.search_from_yaml
+        sources["Pubmed"] = ncbi.search_from_yaml
 
     # Fetch from all sources
     results, csv_files = fetch_from_all_sources(config_file, sources)

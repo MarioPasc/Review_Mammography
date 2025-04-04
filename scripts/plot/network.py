@@ -70,7 +70,7 @@ def create_synonym_mappings(synonym_dict):
     return mapping
 
 
-def create_keyword_network(
+def create_keyword_network_v0(
     csv_file, keywords, output_file="keyword_network.png", synonym_dict=None
 ):
     """
@@ -186,6 +186,182 @@ def create_keyword_network(
         f"Edge width: proportional to co-occurrence frequency (max={max_co_occurrence})"
     )
     plt.figtext(0.5, 0.01, legend_text, ha="center", fontsize=10)
+
+    # Save the figure
+    plt.tight_layout()
+    plt.savefig(output_file, dpi=300, bbox_inches="tight")
+    plt.close()
+
+    print(f"Network visualization saved to {output_file}")
+
+    # Return statistics for further analysis
+    return {
+        "keyword_counts": dict(keyword_counts),
+        "co_occurrence_counts": {k: dict(v) for k, v in co_occurrence_counts.items()},
+        "total_keywords_found": len(keyword_counts),
+        "total_co_occurrences": sum(
+            sum(v.values()) for v in co_occurrence_counts.values()
+        )
+        // 2,
+    }
+
+
+def create_keyword_network(
+    csv_file, keywords, output_file="keyword_network.png", synonym_dict=None
+):
+    """
+    Create a network visualization of keyword co-occurrences in abstracts and titles.
+
+    Args:
+        csv_file: Path to the CSV file containing the articles
+        keywords: List of keywords to search for
+        output_file: Path to save the visualization
+        synonym_dict: Dictionary mapping preferred terms to their synonyms
+    """
+    # Create synonym mappings if provided
+    synonym_mapping = {}
+    if synonym_dict:
+        synonym_mapping = create_synonym_mappings(synonym_dict)
+        print(f"Created synonym mappings for {len(synonym_dict)} preferred terms")
+
+    # Load the CSV file
+    df = pd.read_csv(csv_file)
+
+    # Create dictionaries to store keyword occurrences and co-occurrences
+    keyword_counts = Counter()
+    co_occurrence_counts = defaultdict(Counter)
+
+    # Process each article
+    for _, row in df.iterrows():
+        # Combine title and abstract for searching
+        text = f"{row['title']} {row['abstract']}".lower()
+
+        # Find keywords in the text
+        found_preferred_terms = set()
+
+        for keyword in keywords:
+            # Use word boundary to match whole words only
+            pattern = r"\b" + re.escape(keyword.lower()) + r"\b"
+            if re.search(pattern, text):
+                # Map to preferred term if it's in the synonym mapping
+                if synonym_mapping and keyword.lower() in synonym_mapping:
+                    preferred_term = synonym_mapping[keyword.lower()]
+                    found_preferred_terms.add(preferred_term)
+                    keyword_counts[preferred_term] += 1
+                else:
+                    found_preferred_terms.add(keyword)
+                    keyword_counts[keyword] += 1
+
+        # Count co-occurrences using preferred terms
+        if len(found_preferred_terms) > 1:
+            for term1 in found_preferred_terms:
+                for term2 in found_preferred_terms:
+                    if term1 != term2:
+                        co_occurrence_counts[term1][term2] += 1
+
+    # Create a network graph
+    G = nx.Graph()
+
+    # Add nodes with sizes based on occurrence counts
+    max_count = max(keyword_counts.values()) if keyword_counts else 1
+    min_size = 300  # Minimum node size
+    size_scale = 1500  # Scaling factor for node sizes
+
+    for keyword, count in keyword_counts.items():
+        # Only add nodes that appear at least once
+        if count > 0:
+            # Scale node size based on count
+            node_size = min_size + (count / max_count) * size_scale
+            G.add_node(keyword, size=node_size, count=count)
+
+    # Add edges with weights based on co-occurrence counts
+    max_co_occurrence = 1
+    for kw1, co_occurrences in co_occurrence_counts.items():
+        for kw2, count in co_occurrences.items():
+            if count > 0:
+                G.add_edge(kw1, kw2, weight=count)
+                max_co_occurrence = max(max_co_occurrence, count)
+
+    # If no keywords were found
+    if not G.nodes():
+        print("No keywords found in the dataset")
+        return None
+
+    # Create the visualization
+    plt.figure(figsize=(14, 10))
+
+    # Use spring layout to position nodes
+    pos = nx.spring_layout(G, k=10, iterations=100, seed=42)
+
+    # Get node sizes and colors
+    node_sizes = [G.nodes[node]["size"] for node in G.nodes()]
+
+    # Color nodes by frequency intensity (using a sequential colormap)
+    node_counts = [G.nodes[node]["count"] for node in G.nodes()]
+    node_cmap = plt.cm.viridis  # Choose a colormap for nodes
+    node_colors = node_cmap(np.array(node_counts) / max(node_counts))
+
+    # Get edge weights for coloring
+    edge_weights = [G[u][v]["weight"] for u, v in G.edges()]
+    edge_weights_normalized = (
+        np.array(edge_weights) / max_co_occurrence
+        if max_co_occurrence > 0
+        else np.array(edge_weights)
+    )
+
+    # Choose a colormap for edges (different from nodes for visual distinction)
+    edge_cmap = plt.cm.plasma
+
+    # Draw the network
+    # Draw nodes
+    nodes = nx.draw_networkx_nodes(
+        G,
+        pos,
+        node_size=node_sizes,
+        node_color=node_counts,
+        cmap=node_cmap,
+        alpha=0.8,
+        vmin=0,
+        vmax=max_count,
+    )
+
+    # Draw edges with colormap
+    edges = nx.draw_networkx_edges(
+        G,
+        pos,
+        width=3,  # Fixed width for all edges
+        edge_color=edge_weights,
+        edge_cmap=edge_cmap,
+        alpha=0.7,
+        edge_vmin=0,
+        edge_vmax=max_co_occurrence,
+    )
+
+    # Draw labels
+    nx.draw_networkx_labels(G, pos, font_size=10, font_weight="bold")
+
+    plt.title("Keyword Co-occurrence Network in Mammography Literature", fontsize=16)
+    plt.axis("off")
+
+    # Add node colorbar
+    node_cbar = plt.colorbar(
+        plt.cm.ScalarMappable(cmap=node_cmap, norm=plt.Normalize(0, max_count)),
+        ax=plt.gca(),
+        orientation="vertical",
+        pad=0.01,
+        shrink=0.5,
+    )
+    node_cbar.set_label("Keyword Occurrence Frequency", rotation=270, labelpad=20)
+
+    # Add edge colorbar
+    edge_cbar = plt.colorbar(
+        plt.cm.ScalarMappable(cmap=edge_cmap, norm=plt.Normalize(0, max_co_occurrence)),
+        ax=plt.gca(),
+        orientation="horizontal",
+        pad=0.05,
+        shrink=0.5,
+    )
+    edge_cbar.set_label("Co-occurrence Frequency")
 
     # Save the figure
     plt.tight_layout()
