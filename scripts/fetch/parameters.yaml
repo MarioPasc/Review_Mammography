@@ -1,0 +1,25 @@
+# NCBI Search Parameters Configuration using keyword sets
+
+# Keyword sets - each inner list is a distinct set (combined with AND between sets)
+keyword_sets:
+  - ["DDSM", "CBIS-DDSM", "MIAS", "BancoWeb", "LAPIMO", "UCSF", "LLNL", "INbreast", "VinDr", "VinDr-Mammo", "CMMD", "RSNA", "OPTIMAM", "CSAW", "EMBED", "ADMANI", "BCDR", "BCDR-FM", "BCDR-DM"]  # Dataset terms
+  - ["deep learning", "convolutional neural network", "neural network", "machine learning", "artificial intelligence", "CNN", "NN", "DL", "ML"] # AI terms
+
+# Date range in YYYY/MM/DD format
+date_range:
+  start_date: "2020/01/01"
+  end_date: "2025/12/31"
+
+# Your email for NCBI API access
+email: "mpascual@uma.es"
+
+# Optional parameters
+database: "pubmed"
+max_results: 50
+output_prefix: "data/ncbi_results"
+
+# Additional filters
+free_full_text: true
+
+# Keywords to exclude
+exclude_keywords: ["systematic review", "meta-analysis"]

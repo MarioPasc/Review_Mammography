@@ -534,7 +534,7 @@ def search_ncbi(
 
 
 def build_query(
-    keywords: List[str],
+    keywords: Union[List[str], List[List[str]]],
     date_range: Tuple[str, str],
     article_type: str = "journal article",
     journals: Optional[List[str]] = None,
@@ -547,9 +547,12 @@ def build_query(
 ) -> str:
     """
     Construct a PubMed query string based on keywords and multiple filters.
+    Supports both flat keyword lists and keyword sets (lists of keyword lists).
 
     Args:
-        keywords: List of keywords or phrases to search for in title OR abstract
+        keywords: Either a flat list of keywords, or a list of keyword sets (list of lists)
+                 When using sets, keywords within a set are combined with OR,
+                 and different sets are combined with AND.
         date_range: Tuple containing start and end dates in format 'YYYY/MM/DD'
         article_type: Type of article to filter for (default: "journal article")
         journals: Optional list of journal names to limit search to
@@ -563,13 +566,27 @@ def build_query(
     Returns:
         A formatted query string for use with Entrez.esearch
     """
-    # Create keyword query where each keyword is searched in title OR abstract
-    keyword_parts = []
-    for kw in keywords:
-        keyword_parts.append(f'(("{kw}"[Title]) OR ("{kw}"[Abstract]))')
+    # Check if we have keyword sets (list of lists) or a flat keyword list
+    is_keyword_sets = any(isinstance(item, list) for item in keywords)
 
-    # Join with OR operator to find articles with at least one keyword match
-    keyword_query = " OR ".join(keyword_parts)
+    if is_keyword_sets:
+        # Process each keyword set separately
+        keyword_set_queries = []
+        for keyword_set in keywords:
+            set_parts = []
+            for kw in keyword_set:
+                set_parts.append(f'(("{kw}"[Title]) OR ("{kw}"[Abstract]))')
+            # Join keywords within a set with OR
+            keyword_set_queries.append(f"({' OR '.join(set_parts)})")
+        # Join different sets with AND
+        keyword_query = " AND ".join(keyword_set_queries)
+    else:
+        # Original behavior for flat keyword list
+        keyword_parts = []
+        for kw in keywords:  # type: ignore
+            keyword_parts.append(f'(("{kw}"[Title]) OR ("{kw}"[Abstract]))')
+        # Join with OR operator to find articles with at least one keyword match
+        keyword_query = " OR ".join(keyword_parts)
 
     # Add date range
     start_date, end_date = date_range
@@ -581,6 +598,7 @@ def build_query(
     # Start with base query
     queries = [f"({keyword_query})", date_query, type_query]
 
+    # Rest of the function remains the same...
     # Add journal filter if specified
     if journals and len(journals) > 0:
         journal_parts = [f'"{journal}"[Journal]' for journal in journals]
@@ -618,12 +636,15 @@ def build_query(
     # Combine all query parts with AND
     full_query = " AND ".join(queries)
 
+    print(full_query)
+
     return full_query
 
 
 def search_from_yaml(config_file: str) -> List[Dict[str, Any]]:
     """
     Run an NCBI search using parameters from a YAML configuration file.
+    Supports both flat keyword lists and keyword sets.
 
     Args:
         config_file: Path to YAML configuration file
@@ -637,7 +658,13 @@ def search_from_yaml(config_file: str) -> List[Dict[str, Any]]:
             config = yaml.safe_load(f)
 
         # Extract required parameters
-        keywords = config["keywords"]
+        if "keyword_sets" in config:
+            # Using keyword sets
+            keywords = config["keyword_sets"]
+        else:
+            # Using flat keyword list
+            keywords = config["keywords"]
+
         date_range = (
             config["date_range"]["start_date"],
             config["date_range"]["end_date"],
@@ -675,7 +702,11 @@ def search_from_yaml(config_file: str) -> List[Dict[str, Any]]:
 
         # Call search_ncbi with extracted parameters
         results = search_ncbi(
-            keywords=keywords,
+            keywords=(
+                keywords
+                if not isinstance(keywords[0], list)
+                else [k for sublist in keywords for k in sublist]
+            ),  # Flatten if nested
             date_range=date_range,
             email=email,
             database=database,
@@ -699,5 +730,5 @@ def search_from_yaml(config_file: str) -> List[Dict[str, Any]]:
 
 if __name__ == "__main__":
     # Example using YAML configuration
-    results = search_from_yaml("./scripts/parameters.yaml")
+    results = search_from_yaml("./scripts/fetch/parameters.yaml")
     print(f"Retrieved {len(results)} articles")
