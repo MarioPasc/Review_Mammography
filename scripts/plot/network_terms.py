@@ -158,10 +158,15 @@ def create_keyword_network(
 
             if "keyword_sets" in config:
                 # Extract the first 3 keyword sets (Dataset, CS, Medical)
-                category_names = ["Dataset", "Computer Science", "Medical Terms"]
+                category_names = [
+                    "Dataset",
+                    "Computer Science",
+                    "Medical Terms",
+                    "Computer Science",
+                ]
 
                 for i, (category_name, keyword_set) in enumerate(
-                    zip(category_names, config["keyword_sets"][:3])
+                    zip(category_names, config["keyword_sets"][:4])
                 ):
                     for kw in keyword_set:
                         # Map each keyword to its category
@@ -396,6 +401,24 @@ if __name__ == "__main__":
         "Classification": ("image classification", "classification"),
         "Segmentation": ("image segmentation", "segmentation", "segment"),
         "Detection": ("object detection", "detection", "localization"),
+        "AUC": ("AUC", "area under the curve", "area under the ROC curve"),
+        "ROC": ("ROC", "receiver operating characteristic", "ROC curve", "ROC-AUC"),
+        "F1-Score": ("F1-Score", "F1 score", "F1"),
+        "Sensitivity": ("sensitivity", "true positive rate"),
+        "Specificity": ("specificity", "true negative rate"),
+        "Accuracy": ("accuracy",),
+        "Precision": (
+            "precision",
+            "positive predictive value",
+            "positive predictive rate",
+            "PPV",
+        ),
+        "Recall": ("recall", "sensitivity", "true positive rate"),
+        "Precision-Recall Curve": (
+            "precision-recall curve",
+            "PR curve",
+            "precision-recall",
+        ),
         "DDSM": ("DDSM", "Digital Database for Screening Mammography"),
         "CBIS-DDSM": ("CBIS-DDSM", "Curated Breast Imaging Subset of DDSM"),
         "MIAS": ("MIAS", "Mammographic Image Analysis Society database"),
@@ -419,19 +442,6 @@ if __name__ == "__main__":
             "digital mammography",
             "breast imaging",
         ),
-        "AUC": ("AUC", "area under the curve", "area under the ROC curve"),
-        "ROC": ("ROC", "receiver operating characteristic", "ROC curve", "ROC-AUC"),
-        "F1-Score": ("F1-Score", "F1 score", "F1"),
-        "Sensitivity": ("sensitivity", "true positive rate"),
-        "Specificity": ("specificity", "true negative rate"),
-        "Accuracy": ("accuracy",),
-        "Precision": (
-            "precision",
-            "positive predictive value",
-            "positive predictive rate",
-            "PPV",
-        ),
-        "Recall": ("recall", "sensitivity", "true positive rate"),
     }
     if not keywords:
         print("No keywords loaded from configuration file. Exiting.")

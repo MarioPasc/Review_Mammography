@@ -50,6 +50,13 @@ keyword_sets:
     - "detection"
     - "classification"
     - "localization"
+  - # Medical terms
+    - "mammography"
+    - "breast cancer"
+    - "breast imaging"
+    - "screening mammography"
+    - "digital mammography"
+    - "BC"
   - # Evaluation metrics
     - "ROC"
     - "AUC"
@@ -80,47 +87,35 @@ keyword_sets:
     - "positive predictive value"
     - "PPR"
     - "positive predictive rate"
-  - # Medical terms
-    - "mammography"
-    - "breast cancer"
-    - "breast imaging"
-    - "screening mammography"
-    - "digital mammography"
-    - "BC"
 
-# List of paper IDs or DOIs to fetch citations for
-# RSNA no tiene DOI
-# EMBED no tiene DOI en semantic scholar, tiene en arXiV 
 citation_papers:
-  - "10.1007/978-94-011-5318-8_75" # DDSM
-  - "10.1007/s10278-010-9297-2" # BancoWeb
-  - "10.17863/CAM.105113" # MIAS
-  - "10.1109/IEMBS.1995.575239" # UCSF/LLNL https://doi.org/10.1109/IEMBS.1995.575239
-  - "10.1038/sdata.2017.177" # CBIS-DDSM https://doi.org/10.1038/sdata.2017.177
-  - "10.1016/j.acra.2011.09.014" # INbreast https://doi.org/10.1016/j.acra.2011.09.014 
-  - "10.1101/2022.03.07.22272009" # VinDr-Mammo https://doi.org/10.1101/2022.03.07.22272009
-  - "10.1038/s41597-023-02025-1" # CMMD https://doi.org/10.1038/s41597-023-02025-1 
-  - "10.1148/ryai.2020200103" # OPTIMAM https://doi.org/10.1148/ryai.2020200103 
-  - "10.1007/s10278-019-00278-0" # CSAW https://doi.org/10.1007/s10278-019-00278-0
-  - "10.48550/arXiv.2202.04073" # EMBED https://doi.org/10.48550/arXiv.2202.04073
-  - "corpusid:246680284" # EMBED
-  - "10.1148/ryai.220072" # ADMANI https://doi.org/10.1148/ryai.220072
-  - "10.48550/arXiv.2411.02710" # BCDR https://doi.org/10.48550/arXiv.2411.02710
-  - "corpusid:273821203" # BCDR
-
+  - "10.1007/978-94-011-5318-8_75"
+  - "10.1007/s10278-010-9297-2"
+  - "10.17863/CAM.105113"
+  - "10.1109/IEMBS.1995.575239"
+  - "10.1038/sdata.2017.177"
+  - "10.1016/j.acra.2011.09.014"
+  - "10.1101/2022.03.07.22272009"
+  - "10.1038/s41597-023-02025-1"
+  - "10.1148/ryai.2020200103"
+  - "10.1007/s10278-019-00278-0"
+  - "10.48550/arXiv.2202.04073"
+  - "corpusid:246680284"
+  - "10.1148/ryai.220072"
+  - "10.48550/arXiv.2411.02710"
+  - "corpusid:273821203"
 
 arxiv_categories:
-  - "cs.CV"  # Computer Vision
-  - "cs.LG"  # Machine Learning
-  - "eess.IV"  # Image and Video Processing
-  - "stat.ML"  # Statistics - Machine Learning
+  - "cs.CV"
+  - "cs.LG"
+  - "eess.IV"
+  - "stat.ML"
 
-# Semantic Scholar specific parameters
-semantic_scholar_api_key: ""  # Optional: Add your API key if you have one
+semantic_scholar_api_key: ""
 
 semantic_scholar_publication_types:
   - "JournalArticle"
-  
+
 semantic_scholar_fields_of_study:
   - "Computer Science"
   - "Engineering"
@@ -128,23 +123,39 @@ semantic_scholar_fields_of_study:
 
 semantic_scholar_min_citation_count: 5
 semantic_scholar_open_access_only: true
-semantic_scholar_sort: "citationCount:desc"  # Options: citationCount:desc, publicationDate:desc, etc.
+semantic_scholar_sort: "citationCount:desc"
 
-# Date range in YYYY/MM/DD format
 date_range:
   start_date: "2020/01/01"
   end_date: "2025/12/31"
 
-# Your email for NCBI API access
 email: "mpascual@uma.es"
 
-# Optional parameters
 database: "pubmed"
-max_results: 50
+max_results: 300
 output_prefix: "data/csvs/info"
 
-# Additional filters
 free_full_text: true
 
-# Keywords to exclude
-exclude_keywords: ["systematic review", "meta-analysis", "review", "meta-analysis", "mri"]
+exclude_keywords:
+  - "systematic review"
+  - "meta-analysis"
+  - "review"
+  - "meta-analysis"
+  - "mri"
+  - "pectoral"
+  - "muscle"
+  - "biopsy"
+  - "ultrasound"
+  - "ultrasonography"
+  - "ultrasound imaging"
+  - "ultrasound-guided"
+  - "ultrasound-guided biopsy"
+  - "mri-guided biopsy"
+  - "mri-guided"
+  - "contrast-enhanced mammography"
+  - "contrast-enhanced breast imaging"
+  - "contrast-enhanced ultrasound"
+  - "contrast-enhanced ultrasound imaging"
+  - "radiomics"
+  - "radiogenomics"
