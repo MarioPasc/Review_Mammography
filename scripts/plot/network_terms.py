@@ -419,6 +419,19 @@ if __name__ == "__main__":
             "digital mammography",
             "breast imaging",
         ),
+        "AUC": ("AUC", "area under the curve", "area under the ROC curve"),
+        "ROC": ("ROC", "receiver operating characteristic", "ROC curve", "ROC-AUC"),
+        "F1-Score": ("F1-Score", "F1 score", "F1"),
+        "Sensitivity": ("sensitivity", "true positive rate"),
+        "Specificity": ("specificity", "true negative rate"),
+        "Accuracy": ("accuracy",),
+        "Precision": (
+            "precision",
+            "positive predictive value",
+            "positive predictive rate",
+            "PPV",
+        ),
+        "Recall": ("recall", "sensitivity", "true positive rate"),
     }
     if not keywords:
         print("No keywords loaded from configuration file. Exiting.")

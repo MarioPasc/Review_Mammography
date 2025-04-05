@@ -788,7 +788,11 @@ def process_citation_papers(config_file: str) -> List[Dict[str, Any]]:
 
 def enhance_dataset_references(csv_file_path: str) -> None:
     """
-    Check paper titles and abstracts for additional dataset references and update the cited_dataset column.
+    Check paper titles and abstracts for:
+    1. Additional dataset references and update cited_dataset column
+    2. Evaluation metrics and add them to a new column
+    3. Remove rows containing any excluded keywords
+    4. Filter out citations that don't mention any evaluation metric
 
     Args:
         csv_file_path: Path to the CSV file containing citation data
@@ -802,6 +806,31 @@ def enhance_dataset_references(csv_file_path: str) -> None:
         if "cited_dataset" not in df.columns:
             print("Error: 'cited_dataset' column not found in the CSV file.")
             return
+
+        # Load configuration
+        try:
+            with open("./scripts/fetch/parameters.yaml", "r", encoding="utf-8") as f:
+                config = yaml.safe_load(f)
+
+            # Get evaluation metrics from config
+            evaluation_metrics = {}
+            for keyword_set in config.get("keyword_sets", []):
+                # Find the evaluation metrics set
+                if any(
+                    metric in str(keyword_set)
+                    for metric in ["ROC", "AUC", "sensitivity"]
+                ):
+                    evaluation_metrics = {
+                        "metrics": [metric for metric in keyword_set if metric]
+                    }
+                    break
+
+            # Get excluded keywords from config
+            exclude_keywords = config.get("exclude_keywords", [])
+        except Exception as e:
+            print(f"Warning: Could not load evaluation metrics from config: {str(e)}")
+            evaluation_metrics = {"metrics": []}
+            exclude_keywords = []
 
         # Create a reverse mapping from dataset names to identifiers
         # Also include common variations and abbreviations
@@ -841,6 +870,14 @@ def enhance_dataset_references(csv_file_path: str) -> None:
         # Count of modifications
         modified_rows = 0
         added_references = 0
+        rows_before = len(df)
+
+        # Add evaluation_metrics column if it doesn't exist
+        if "evaluation_metrics" not in df.columns:
+            df["evaluation_metrics"] = ""
+
+        # Track papers that contain evaluation metrics
+        contains_metrics = pd.Series([False] * len(df))
 
         # Process each row
         for index, row in df.iterrows():
@@ -876,15 +913,73 @@ def enhance_dataset_references(csv_file_path: str) -> None:
                 df.at[index, "cited_dataset"] = ", ".join(all_datasets)
                 modified_rows += 1
 
+            # Check for evaluation metrics in title and abstract
+            detected_metrics = []
+            for metric in evaluation_metrics.get("metrics", []):
+                if metric.lower() in title or metric.lower() in abstract:
+                    detected_metrics.append(metric)
+
+            # If metrics found, update the evaluation_metrics column and mark the paper
+            if detected_metrics:
+                df.at[index, "evaluation_metrics"] = ", ".join(
+                    sorted(set(detected_metrics))
+                )
+                contains_metrics[index] = True
+
+        # Now filter out rows containing excluded keywords
+        if exclude_keywords:
+            print(
+                f"Filtering out rows with excluded keywords: {', '.join(exclude_keywords)}"
+            )
+
+            # Define text columns to check for excluded keywords
+            text_columns = [
+                "title",
+                "abstract",
+                "venue",
+                "authors",
+                "publication_types",
+                "fields_of_study",
+            ]
+
+            # Create a mask for rows to keep (initially all True)
+            mask = pd.Series([True] * len(df))
+
+            # For each keyword, update mask to exclude matching rows
+            for keyword in exclude_keywords:
+                for col in text_columns:
+                    if col in df.columns:
+                        # Update mask to exclude rows where this keyword appears in this column
+                        mask = mask & ~df[col].astype(str).str.lower().str.contains(
+                            keyword.lower(), na=False
+                        )
+
+            # Apply the mask to filter the dataframe
+            df = df[mask]
+
+        # Filter out papers that don't mention any evaluation metric
+        rows_before_metrics_filter = len(df)
+        df = df[df["evaluation_metrics"] != ""]
+        metrics_filtered = rows_before_metrics_filter - len(df)
+        print(f"Filtered out {metrics_filtered} papers without evaluation metrics")
+
         # Save updated DataFrame
         df.to_csv(csv_file_path, index=False)
+
+        rows_after = len(df)
+        rows_removed = rows_before - rows_after
 
         print(f"Dataset reference enhancement complete:")
         print(f"  - Modified rows: {modified_rows}")
         print(f"  - Added references: {added_references}")
+        print(f"  - Rows removed by exclusion filters: {rows_removed}")
+        print(f"  - Rows removed for lacking evaluation metrics: {metrics_filtered}")
 
     except Exception as e:
         print(f"Error during dataset reference enhancement: {str(e)}")
+        import traceback
+
+        traceback.print_exc()
 
 
 if __name__ == "__main__":
