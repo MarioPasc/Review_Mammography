@@ -244,7 +244,7 @@ def create_keyword_network(
     plt.figure(figsize=(14, 10))
 
     # Use spring layout to position nodes
-    pos = nx.spring_layout(G, k=7, iterations=100, seed=42)
+    pos = nx.spring_layout(G, k=8, iterations=100, seed=1)
 
     # Separate nodes by category
     category_colors = {
@@ -288,7 +288,7 @@ def create_keyword_network(
         width=3,
         edge_color=edge_weights,
         edge_cmap=edge_cmap,
-        alpha=0.7,
+        alpha=0.5,
         edge_vmin=0,
         edge_vmax=max_co_occurrence,
     )
@@ -305,9 +305,11 @@ def create_keyword_network(
         font_sizes[node] = base_font_size + (node_size * font_scale_factor)
 
     # Draw labels with variable font sizes
-    nx.draw_networkx_labels(G, pos, font_size=font_sizes, font_weight="bold")
+    nx.draw_networkx_labels(
+        G, pos, font_size=font_sizes, font_weight="normal", font_family="arial black"
+    )
 
-    plt.title("Keyword Co-occurrence Network in Mammography Literature", fontsize=16)
+    # plt.title("Keyword Co-occurrence Network in Mammography Literature", fontsize=16)
     plt.axis("off")
 
     # Create a custom legend with consistent marker sizes
@@ -327,13 +329,13 @@ def create_keyword_network(
             )
 
     # Add custom legend
-    plt.legend(handles=legend_elements, loc="lower right", fontsize=10)
+    plt.legend(handles=legend_elements, loc="lower left", fontsize=10)
 
     # Add edge colorbar for co-occurrence
     cbar = plt.colorbar(
         plt.cm.ScalarMappable(cmap=edge_cmap, norm=plt.Normalize(0, max_co_occurrence)),
         ax=plt.gca(),
-        orientation="vertical",
+        orientation="horizontal",
         pad=0.05,
         shrink=0.5,
     )
@@ -363,12 +365,10 @@ if __name__ == "__main__":
     yaml_file = "/home/mariopasc/Python/Projects/Review_Mammography/scripts/fetch/parameters.yaml"
 
     # Path to the CSV file
-    csv_file = (
-        "/home/mariopasc/Python/Projects/Review_Mammography/data/combined_results.csv"
-    )
+    csv_file = "/home/mariopasc/Python/Projects/Review_Mammography/data/csvs/info_citations.csv"
 
     # Output files
-    network_output = "data/plots/keyword_network.png"
+    network_output = "data/plots/keyword_network.svg"
     report_output = "data/plots/keyword_analysis.txt"
 
     # Create output directory if it doesn't exist
@@ -411,6 +411,7 @@ if __name__ == "__main__":
             "ADMANI",
             "Annotated Digital Mammograms and Associated Non-Image Datasets",
         ),
+        "CMMD": ("CMMD", "Chinese Mammography Database"),
         "Breast Cancer": ("breast cancer", "BC"),
         "Mammography": (
             "mammography",
