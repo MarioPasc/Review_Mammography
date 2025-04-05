@@ -16,7 +16,6 @@ keyword_sets:
     - "LLNL"
     - "UCSF/LLNL High Resolution Digital Mammogram Library"
     - "INbreast"
-    - "VinDr"
     - "VinDr-Mammo"
     - "CMMD"
     - "Chinese Mammography Database"
@@ -42,7 +41,6 @@ keyword_sets:
     - "deep neural network"
     - "computer vision"
     - "machine learning"
-    - "model"
     - "artificial intelligence"
     - "CNN"
     - "NN"
@@ -52,7 +50,14 @@ keyword_sets:
     - "detection"
     - "classification"
     - "localization"
-    - "segment"
+  - # Medical terms
+    - "mammography"
+    - "breast cancer"
+    - "breast imaging"
+    - "screening mammography"
+    - "digital mammography"
+    - "BC"
+    
 
 arxiv_categories:
   - "cs.CV"  # Computer Vision
@@ -65,7 +70,6 @@ semantic_scholar_api_key: ""  # Optional: Add your API key if you have one
 
 semantic_scholar_publication_types:
   - "JournalArticle"
-  - "Conference"
   
 semantic_scholar_fields_of_study:
   - "Computer Science"
@@ -86,7 +90,7 @@ email: "mpascual@uma.es"
 
 # Optional parameters
 database: "pubmed"
-max_results: 100
+max_results: 500
 output_prefix: "data/ncbi_results"
 
 # Additional filters

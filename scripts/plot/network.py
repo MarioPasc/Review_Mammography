@@ -6,6 +6,7 @@ import re
 import numpy as np
 import yaml  # type: ignore
 import os
+import seaborn as sns  # type: ignore
 
 
 def load_keywords_from_yaml(yaml_file):
@@ -130,7 +131,7 @@ def create_keyword_network(
     keywords,
     output_file="keyword_network.png",
     synonym_dict=None,
-    dataset_terms=None,
+    config_file=None,
 ):
     """
     Create a network visualization of keyword co-occurrences in abstracts and titles.
@@ -140,13 +141,38 @@ def create_keyword_network(
         keywords: List of keywords to search for
         output_file: Path to save the visualization
         synonym_dict: Dictionary mapping preferred terms to their synonyms
-        dataset_terms: Set of terms that represent datasets (for special styling)
+        config_file: Path to the config file with keyword categories
     """
     # Create synonym mappings if provided
     synonym_mapping = {}
     if synonym_dict:
         synonym_mapping = create_synonym_mappings(synonym_dict)
         print(f"Created synonym mappings for {len(synonym_dict)} preferred terms")
+
+    # Load keyword categories from config file
+    keyword_categories = {}
+    if config_file:
+        try:
+            with open(config_file, "r") as f:
+                config = yaml.safe_load(f)
+
+            if "keyword_sets" in config:
+                # Extract the first 3 keyword sets (Dataset, CS, Medical)
+                category_names = ["Dataset", "Computer Science", "Medical Terms"]
+
+                for i, (category_name, keyword_set) in enumerate(
+                    zip(category_names, config["keyword_sets"][:3])
+                ):
+                    for kw in keyword_set:
+                        # Map each keyword to its category
+                        # If using synonyms, map both the keyword and its preferred term
+                        if synonym_mapping and kw.lower() in synonym_mapping:
+                            preferred_term = synonym_mapping[kw.lower()]
+                            keyword_categories[preferred_term] = category_name
+                        else:
+                            keyword_categories[kw] = category_name
+        except Exception as e:
+            print(f"Error loading categories from config: {e}")
 
     # Load the CSV file
     df = pd.read_csv(csv_file)
@@ -197,22 +223,16 @@ def create_keyword_network(
         if count > 0:
             # Scale node size based on count
             node_size = min_size + (count / max_count) * size_scale
-            # Add a flag for dataset nodes
-            is_dataset = dataset_terms and keyword in dataset_terms
-            G.add_node(keyword, size=node_size, count=count, is_dataset=is_dataset)
+            # Assign the category
+            category = keyword_categories.get(keyword, "Other")
+            G.add_node(keyword, size=node_size + 20, count=count, category=category)
 
     # Add edges with weights based on co-occurrence counts
     max_co_occurrence = 1
     for kw1, co_occurrences in co_occurrence_counts.items():
         for kw2, count in co_occurrences.items():
             if count > 0:
-                # Check if both nodes are datasets
-                is_dataset_edge = False
-                if dataset_terms:
-                    if kw1 in dataset_terms and kw2 in dataset_terms:
-                        is_dataset_edge = True
-
-                G.add_edge(kw1, kw2, weight=count, is_dataset_edge=is_dataset_edge)
+                G.add_edge(kw1, kw2, weight=count)
                 max_co_occurrence = max(max_co_occurrence, count)
 
     # If no keywords were found
@@ -224,62 +244,48 @@ def create_keyword_network(
     plt.figure(figsize=(14, 10))
 
     # Use spring layout to position nodes
-    pos = nx.spring_layout(G, k=6, iterations=100, seed=42)
+    pos = nx.spring_layout(G, k=7, iterations=100, seed=42)
 
-    # Separate nodes by type (dataset vs non-dataset)
-    dataset_nodes = [
-        node for node in G.nodes() if G.nodes[node].get("is_dataset", False)
-    ]
-    other_nodes = [
-        node for node in G.nodes() if not G.nodes[node].get("is_dataset", False)
-    ]
+    # Separate nodes by category
+    category_colors = {
+        "Dataset": "#DDAA33",  # Blue
+        "Computer Science": "#BB5566",  # Orange
+        "Medical Terms": "#6699CC",  # Green
+        "Other": "#d62728",  # Red for uncategorized terms
+    }
 
-    # Get node sizes
-    dataset_node_sizes = [G.nodes[node]["size"] for node in dataset_nodes]
-    other_node_sizes = [G.nodes[node]["size"] for node in other_nodes]
+    # Group nodes by category
+    categorized_nodes = {category: [] for category in category_colors}
+    for node in G.nodes():
+        category = G.nodes[node].get("category", "Other")
+        categorized_nodes[category].append(node)
 
-    # Get all node sizes for legend
-    all_sizes = sorted([G.nodes[node]["size"] for node in G.nodes()])
-    all_counts = sorted([G.nodes[node]["count"] for node in G.nodes()])
+    # Draw nodes by category
+    for category, nodes in categorized_nodes.items():
+        if nodes:
+            # Get node sizes
+            node_sizes = [G.nodes[node]["size"] for node in nodes]
 
-    # Define distinct colors for dataset and non-dataset nodes
-    dataset_color = "#1f77b4"  # Blue
-    other_color = "#ff7f0e"  # Orange
+            # Draw nodes
+            nx.draw_networkx_nodes(
+                G,
+                pos,
+                nodelist=nodes,
+                node_size=node_sizes,
+                node_color=category_colors[category],
+                alpha=0.8,
+                label=category,
+            )
 
-    # Draw nodes by type
-    if dataset_nodes:
-        nx.draw_networkx_nodes(
-            G,
-            pos,
-            nodelist=dataset_nodes,
-            node_size=dataset_node_sizes,
-            node_color=dataset_color,
-            alpha=0.8,
-            label="Dataset",
-        )
-
-    if other_nodes:
-        nx.draw_networkx_nodes(
-            G,
-            pos,
-            nodelist=other_nodes,
-            node_size=other_node_sizes,
-            node_color=other_color,
-            alpha=0.8,
-            label="Non-Dataset",
-        )
-
-    # Choose a colormap for edges
-    edge_cmap = plt.cm.plasma
-
-    # Get edge weights for coloring
+    # Draw edges
     edge_weights = [G[u][v]["weight"] for u, v in G.edges()]
+    edge_cmap = sns.color_palette("rocket_r", as_cmap=True)
 
     # Draw all edges with curved style
     nx.draw_networkx_edges(
         G,
         pos,
-        width=3,  # Fixed width for all edges
+        width=3,
         edge_color=edge_weights,
         edge_cmap=edge_cmap,
         alpha=0.7,
@@ -287,14 +293,41 @@ def create_keyword_network(
         edge_vmax=max_co_occurrence,
     )
 
-    # Draw labels
-    nx.draw_networkx_labels(G, pos, font_size=10, font_weight="bold")
+    # Calculate font sizes based on node sizes
+    font_sizes = {}
+    for node in G.nodes():
+        # Get the original node size
+        node_size = G.nodes[node]["size"]
+        # Scale the font size based on the node size
+        # You can adjust these values to get the desired scaling effect
+        base_font_size = 8
+        font_scale_factor = 0.005
+        font_sizes[node] = base_font_size + (node_size * font_scale_factor)
+
+    # Draw labels with variable font sizes
+    nx.draw_networkx_labels(G, pos, font_size=font_sizes, font_weight="bold")
 
     plt.title("Keyword Co-occurrence Network in Mammography Literature", fontsize=16)
     plt.axis("off")
 
-    # Add the node type legend automatically through matplotlib
-    plt.legend(loc="lower right", fontsize=10)
+    # Create a custom legend with consistent marker sizes
+    legend_elements = []
+    for category, color in category_colors.items():
+        if categorized_nodes[category]:  # Only add categories that have nodes
+            legend_elements.append(
+                plt.Line2D(
+                    [0],
+                    [0],
+                    marker="o",
+                    color="w",
+                    markerfacecolor=color,
+                    markersize=10,  # Consistent size for all legend markers
+                    label=category,
+                )
+            )
+
+    # Add custom legend
+    plt.legend(handles=legend_elements, loc="lower right", fontsize=10)
 
     # Add edge colorbar for co-occurrence
     cbar = plt.colorbar(
@@ -378,39 +411,26 @@ if __name__ == "__main__":
             "ADMANI",
             "Annotated Digital Mammograms and Associated Non-Image Datasets",
         ),
+        "Breast Cancer": ("breast cancer", "BC"),
+        "Mammography": (
+            "mammography",
+            "screening mammography",
+            "digital mammography",
+            "breast imaging",
+        ),
     }
-
-    # Define which terms are dataset-related
-    dataset_terms = {
-        "DDSM",
-        "CBIS-DDSM",
-        "MIAS",
-        "UCSF",
-        "CMMD",
-        "BancoWeb",
-        "INbreast",
-        "VinDr-Mammo",
-        "OPTIMAM",
-        "BCDR",
-        "RSNA",
-        "OPTIMAM",
-        "CSAW",
-        "EMBED",
-        "ADMANI",
-    }
-
     if not keywords:
         print("No keywords loaded from configuration file. Exiting.")
     else:
         print(f"Loaded {len(keywords)} keywords from configuration file")
 
-        # Create the network visualization with synonym handling and dataset edge styling
+        # Create the network visualization with the config file for categories
         stats = create_keyword_network(
             csv_file,
             keywords,
             network_output,
             synonym_dict=synonym_dict,
-            dataset_terms=dataset_terms,
+            config_file=yaml_file,  # Pass the config file
         )
 
         # Generate detailed analysis report
