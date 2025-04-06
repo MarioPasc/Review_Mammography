@@ -8,11 +8,11 @@ This script analyzes citations for mammography datasets:
 """
 
 import time
-import yaml
+import yaml  # type: ignore
 import os
 import json
 import pandas as pd
-import requests
+import requests  # type: ignore
 import matplotlib.pyplot as plt
 from typing import Dict, List, Any, Optional, Tuple
 from datetime import datetime
@@ -222,7 +222,7 @@ def fetch_citations_count_by_year(
         Dictionary mapping years to citation counts
     """
     headers = configure_api_key(api_key)
-    citations_by_year = {}
+    citations_by_year: dict = {}
 
     # Set up pagination
     limit = 100
