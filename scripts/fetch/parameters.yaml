@@ -23,6 +23,9 @@ keyword_sets:
     - "RSNA Screening Mammography Breast Cancer Detection"
     - "OPTIMAM"
     - "OPTIMAM Mammography Image Database"
+    - "OMI-DB" # This is the same as OPTIMAM
+    - "OMI" # This is the same as OPTIMAM 
+    - "Open Mammography Image Database" # This is the same as OPTIMAM
     - "CSAW"
     - "Cohort of Screen-Aged Women"
     - "EMBED"
@@ -93,6 +96,7 @@ citation_papers:
   - "10.1007/s10278-010-9297-2"
   - "10.17863/CAM.105113"
   - "10.1109/IEMBS.1995.575239"
+  - "10.1117/12.2041674"
   - "10.1038/sdata.2017.177"
   - "10.1016/j.acra.2011.09.014"
   - "10.1101/2022.03.07.22272009"
