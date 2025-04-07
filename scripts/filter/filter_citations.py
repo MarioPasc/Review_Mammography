@@ -1,7 +1,6 @@
 import pandas as pd
 import yaml  # type: ignore
 
-
 def enhance_dataset_references(csv_file_path: str) -> None:
     """
     Check paper titles and abstracts for:
@@ -9,6 +8,7 @@ def enhance_dataset_references(csv_file_path: str) -> None:
     2. Evaluation metrics and add them to a new column
     3. Remove rows containing any excluded keywords
     4. Filter out citations that don't mention any evaluation metric
+    5. Remove rows with empty paper_id values
 
     Args:
         csv_file_path: Path to the CSV file containing citation data
@@ -22,6 +22,15 @@ def enhance_dataset_references(csv_file_path: str) -> None:
         if "cited_dataset" not in df.columns:
             print("Error: 'cited_dataset' column not found in the CSV file.")
             return
+            
+        # Remove rows with empty paper_id values
+        rows_before_id_filter = len(df)
+        if "paper_id" in df.columns:
+            # Filter out rows where paper_id is empty (NaN, None, or empty string)
+            df = df[df["paper_id"].notna() & (df["paper_id"] != "")]
+            id_filtered = rows_before_id_filter - len(df)
+            if id_filtered > 0:
+                print(f"Removed {id_filtered} rows with empty paper_id values")
 
         # Load configuration
         try:
@@ -190,6 +199,9 @@ def enhance_dataset_references(csv_file_path: str) -> None:
         print(f"  - Added references: {added_references}")
         print(f"  - Rows removed by exclusion filters: {rows_removed}")
         print(f"  - Rows removed for lacking evaluation metrics: {metrics_filtered}")
+        if "paper_id" in df.columns:
+            print(f"  - Rows removed for empty paper_id: {id_filtered}")
+        print(f"  - Final number of rows: {rows_after}")
 
     except Exception as e:
         print(f"Error during dataset reference enhancement: {str(e)}")
