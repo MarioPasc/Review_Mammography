@@ -130,7 +130,7 @@ semantic_scholar_open_access_only: true
 semantic_scholar_sort: "citationCount:desc"
 
 date_range:
-  start_date: "2020/01/01"
+  start_date: "2015/01/01"
   end_date: "2025/12/31"
 
 email: "mpascual@uma.es"
@@ -147,6 +147,7 @@ exclude_keywords:
   - "review"
   - "study"
   - "survey"
+  - "match"
   - "comparative study"
   - "meta-analysis"
   - "mri"

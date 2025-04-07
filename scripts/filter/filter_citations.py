@@ -9,6 +9,7 @@ def enhance_dataset_references(csv_file_path: str) -> None:
     3. Remove rows containing any excluded keywords
     4. Filter out citations that don't mention any evaluation metric
     5. Remove rows with empty paper_id values
+    6. Filter papers outside the specified year range
 
     Args:
         csv_file_path: Path to the CSV file containing citation data
@@ -52,10 +53,22 @@ def enhance_dataset_references(csv_file_path: str) -> None:
 
             # Get excluded keywords from config
             exclude_keywords = config.get("exclude_keywords", [])
+            
+            # Get date range from config
+            date_range = config.get("date_range", {})
+            start_date = date_range.get("start_date", "")
+            end_date = date_range.get("end_date", "")
+            
+            # Extract years from date strings
+            start_year = int(start_date.split('/')[0]) if start_date else None
+            end_year = int(end_date.split('/')[0]) if end_date else None
+            
         except Exception as e:
-            print(f"Warning: Could not load evaluation metrics from config: {str(e)}")
+            print(f"Warning: Could not load configuration from config: {str(e)}")
             evaluation_metrics = {"metrics": []}
             exclude_keywords = []
+            start_year = None
+            end_year = None
 
         # Create a reverse mapping from dataset names to identifiers
         # Also include common variations and abbreviations
@@ -188,6 +201,19 @@ def enhance_dataset_references(csv_file_path: str) -> None:
         metrics_filtered = rows_before_metrics_filter - len(df)
         print(f"Filtered out {metrics_filtered} papers without evaluation metrics")
 
+        # Filter by year range if year column exists and date range is specified
+        year_filtered = 0
+        if "year" in df.columns and start_year is not None and end_year is not None:
+            rows_before_year_filter = len(df)
+            print(f"Filtering papers to years {start_year}-{end_year}...")
+            # Convert year to numeric, with errors='coerce' to handle non-numeric values
+            df["year"] = pd.to_numeric(df["year"], errors="coerce")
+            # Filter to papers within year range
+            df = df[(df["year"] >= start_year) & (df["year"] <= end_year)]
+            year_filtered = rows_before_year_filter - len(df)
+            if year_filtered > 0:
+                print(f"Removed {year_filtered} papers outside year range {start_year}-{end_year}")
+
         # Save updated DataFrame
         df.to_csv(csv_file_path, index=False)
 
@@ -201,6 +227,8 @@ def enhance_dataset_references(csv_file_path: str) -> None:
         print(f"  - Rows removed for lacking evaluation metrics: {metrics_filtered}")
         if "paper_id" in df.columns:
             print(f"  - Rows removed for empty paper_id: {id_filtered}")
+        if start_year is not None and end_year is not None:
+            print(f"  - Rows removed for being outside year range {start_year}-{end_year}: {year_filtered}")
         print(f"  - Final number of rows: {rows_after}")
 
     except Exception as e:
@@ -209,5 +237,5 @@ def enhance_dataset_references(csv_file_path: str) -> None:
 
         traceback.print_exc()
 
-
-enhance_dataset_references(csv_file_path="data/csvs/info_citations.csv")
+if __name__ == "__main__":
+    enhance_dataset_references(csv_file_path="data/csvs/info_citations.csv")

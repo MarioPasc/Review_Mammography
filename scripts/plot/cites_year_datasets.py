@@ -168,7 +168,7 @@ def create_enhanced_visualization(data, output_path, vertical_heights=None):
     ax.grid(axis="y", linestyle="--", alpha=0.7)
 
     # Ensure x-axis uses integer years and covers all relevant years
-    ax.set_xlim(min(year_range) - 1, max(year_range) + 1)
+    ax.set_xlim(min(year_range) - 1, max(year_range) + 0.5)
     ax.xaxis.set_major_locator(MaxNLocator(integer=True))
 
     # Set y-axis limit to accommodate annotations

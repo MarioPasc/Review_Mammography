@@ -86,9 +86,9 @@ def plot_dataset_author_venue_sankey(
     dataset_counter = Counter(
         itertools.chain.from_iterable(df["datasets_list"].dropna())
     )
-    top_datasets = [
-        d for d, c in dataset_counter.most_common(20)
-    ]  # Limit to top 20 datasets
+    all_datasets = list(dataset_counter.keys())
+    print(f"Including all {len(all_datasets)} datasets in visualization")
+    top_datasets = all_datasets  # Use all datasets instead of just top 20
 
     # Simplify field of study to main categories
     def simplify_field(field):
@@ -186,7 +186,6 @@ def plot_dataset_author_venue_sankey(
     datasets_used = set(source for (source, _), _ in da_links.items())
     authors_used = set(target for (_, target), _ in da_links.items())
     venues_used = set(target for (_, target), _ in av_links.items())
-
     # Sort nodes by number of connections (most connected first)
     datasets_sorted = sorted(
         datasets_used, key=lambda x: -dataset_connections.get(x, 0)
@@ -398,6 +397,6 @@ if __name__ == "__main__":
     stats = plot_dataset_author_venue_sankey(
         csv_file,
         output_dir="data/plots",
-        top_n_authors=30,  # Adjust number of authors as needed
+        top_n_authors=1000,  # Adjust number of authors as needed
     )
     print(f"Sankey diagram statistics: {stats}")
