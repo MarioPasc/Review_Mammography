@@ -367,10 +367,10 @@ def create_keyword_network(
 
 if __name__ == "__main__":
     # Path to the YAML configuration file
-    yaml_file = "/home/mariopasc/Python/Projects/Review_Mammography/scripts/fetch/parameters.yaml"
+    yaml_file = "scripts/fetch/parameters.yaml"
 
     # Path to the CSV file
-    csv_file = "/home/mariopasc/Python/Projects/Review_Mammography/data/csvs/info_citations.csv"
+    csv_file = "data/csvs/info_citations.csv"
 
     # Output files
     network_output = "data/plots/keyword_network.svg"

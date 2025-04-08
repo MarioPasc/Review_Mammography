@@ -39,20 +39,45 @@ keyword_sets:
   - # AI terms
     - "deep learning"
     - "convolutional neural network"
+    - "convolutional neural networks"
     - "neural network"
+    - "neural networks"
     - "artificial neural network"
+    - "artificial neural networks"
     - "deep neural network"
+    - "deep neural networks"
     - "computer vision"
     - "machine learning"
     - "artificial intelligence"
     - "CNN"
+    - "CNNs"
     - "NN"
+    - "AI"
+    - "ANNs"
+    - "ANN"
     - "DL"
     - "ML"
     - "segmentation"
     - "detection"
     - "classification"
     - "localization"
+    - "unet"
+    - "nnunet"
+    - "pytorch"
+    - "u-net"
+    - "yolo"
+    - "nn-unet"
+    - "vit"
+    - "transformer"
+    - "vision transformer"
+    - "attention"
+    - "self-attention"
+    - "transfer learning"
+    - "fine-tuning"
+    - "pre-trained"
+    - "pretrained"
+    - "transfer"
+    - "fine-tune"
   - # Medical terms
     - "mammography"
     - "breast cancer"
@@ -130,13 +155,13 @@ semantic_scholar_open_access_only: true
 semantic_scholar_sort: "citationCount:desc"
 
 date_range:
-  start_date: "2015/01/01"
+  start_date: "2020/01/01"
   end_date: "2025/12/31"
 
 email: "mpascual@uma.es"
 
 database: "pubmed"
-max_results: 300
+max_results: 600
 output_prefix: "data/csvs/info"
 
 free_full_text: true
@@ -167,3 +192,6 @@ exclude_keywords:
   - "contrast-enhanced ultrasound imaging"
   - "radiomics"
   - "radiogenomics"
+  - "image generation"
+  - "image synthesis"
+  - "lung"
