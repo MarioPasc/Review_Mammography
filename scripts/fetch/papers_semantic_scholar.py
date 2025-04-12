@@ -23,7 +23,7 @@ from semantic_scholar_fetch import (  # type: ignore
 )
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from filter import filter_citations
+from manipulate import filter_citations
 
 # Citation endpoint
 PAPER_CITATIONS_ENDPOINT = "/paper"

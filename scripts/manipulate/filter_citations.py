@@ -214,6 +214,17 @@ def enhance_dataset_references(csv_file_path: str) -> None:
             if year_filtered > 0:
                 print(f"Removed {year_filtered} papers outside year range {start_year}-{end_year}")
 
+        # Remove rows with citation_count less than 5
+        if "citation_count" in df.columns:
+            rows_before_citation_filter = len(df)
+            df = df[df["citation_count"] >= 5]
+            citation_filtered = rows_before_citation_filter - len(df)
+            if citation_filtered > 0:
+                print(f"Removed {citation_filtered} papers with less than 5 citations")
+        else:
+            citation_filtered = 0
+            print("No citation_count column found, skipping citation filtering.")
+
         # Save updated DataFrame
         df.to_csv(csv_file_path, index=False)
 
@@ -230,7 +241,7 @@ def enhance_dataset_references(csv_file_path: str) -> None:
         if start_year is not None and end_year is not None:
             print(f"  - Rows removed for being outside year range {start_year}-{end_year}: {year_filtered}")
         print(f"  - Final number of rows: {rows_after}")
-
+        print(f"  - Rows removed for citation count < 5: {citation_filtered}")
     except Exception as e:
         print(f"Error during dataset reference enhancement: {str(e)}")
         import traceback
