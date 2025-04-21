@@ -609,7 +609,7 @@ def process_citation_papers(config_file: str) -> List[Dict[str, Any]]:
 
             # Filter citations by AI terms
             paper_filtered_citations = filter_papers_by_keywords(citations, ai_terms)
-            print(f"After filtering, {len(paper_filtered_citations)} citations remain.")
+            print(f"After filtering by keywords, {len(paper_filtered_citations)} citations remain out of {len(citations)} original citations.")
 
             # Store the dataset name for each paper ID
             for citation in paper_filtered_citations:
@@ -774,7 +774,16 @@ def process_citation_papers(config_file: str) -> List[Dict[str, Any]]:
 
                 # Add this new line to call the enhancement function:
                 filter_citations.enhance_dataset_references(csv_file)
-
+                # After applying additional filters (date, citation count, duplicates)
+                try:
+                    # Load the final processed CSV to get the count of papers after all filtering
+                    final_df = pd.read_csv(csv_file)
+                    print("\nFinal filtering results:")
+                    print(f"Original papers after keyword filtering: {len(df)}")
+                    print(f"Papers remaining after date/citation/duplicate filtering: {len(final_df)}")
+                    print(f"Removed papers: {len(df) - len(final_df)}")
+                except Exception as e:
+                    print(f"Error reading final filtered results: {str(e)}")
             except Exception as e:
                 print(f"Error during CSV post-processing: {str(e)}")
         return all_metadata
