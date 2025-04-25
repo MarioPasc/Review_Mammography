@@ -1,5 +1,7 @@
 import pandas as pd
 import yaml  # type: ignore
+from typing import Dict, List, Set
+
 
 def enhance_dataset_references(csv_file_path: str) -> None:
     """
@@ -11,6 +13,8 @@ def enhance_dataset_references(csv_file_path: str) -> None:
     5. Remove rows with empty paper_id values
     6. Filter papers outside the specified year range
 
+    Saves filtered entries to a separate CSV with exclusion reasons.
+
     Args:
         csv_file_path: Path to the CSV file containing citation data
     """
@@ -20,15 +24,33 @@ def enhance_dataset_references(csv_file_path: str) -> None:
         # Read the CSV file
         df = pd.read_csv(csv_file_path)
 
+        # Create a copy of the original dataframe to track removed entries
+        removed_df = pd.DataFrame()
+
+        # Add columns to track exclusion reasons
+        df["exclusion_filter"] = ""
+        df["exclusion_reason"] = ""
+
         if "cited_dataset" not in df.columns:
             print("Error: 'cited_dataset' column not found in the CSV file.")
             return
-            
-        # Remove rows with empty paper_id values
+
+        # Track removed entries by paper_id for empty paper_id values
         rows_before_id_filter = len(df)
         if "paper_id" in df.columns:
-            # Filter out rows where paper_id is empty (NaN, None, or empty string)
-            df = df[df["paper_id"].notna() & (df["paper_id"] != "")]
+            # Identify rows where paper_id is empty
+            empty_id_mask = ~(df["paper_id"].notna() & (df["paper_id"] != ""))
+
+            # Add exclusion reason to rows being removed
+            df.loc[empty_id_mask, "exclusion_filter"] = "empty_paper_id"
+            df.loc[empty_id_mask, "exclusion_reason"] = "Missing paper ID"
+
+            # Add these rows to removed_df
+            removed_df = pd.concat([removed_df, df[empty_id_mask]])
+
+            # Filter out these rows from the main df
+            df = df[~empty_id_mask]
+
             id_filtered = rows_before_id_filter - len(df)
             if id_filtered > 0:
                 print(f"Removed {id_filtered} rows with empty paper_id values")
@@ -53,16 +75,16 @@ def enhance_dataset_references(csv_file_path: str) -> None:
 
             # Get excluded keywords from config
             exclude_keywords = config.get("exclude_keywords", [])
-            
+
             # Get date range from config
             date_range = config.get("date_range", {})
             start_date = date_range.get("start_date", "")
             end_date = date_range.get("end_date", "")
-            
+
             # Extract years from date strings
-            start_year = int(start_date.split('/')[0]) if start_date else None
-            end_year = int(end_date.split('/')[0]) if end_date else None
-            
+            start_year = int(start_date.split("/")[0]) if start_date else None
+            end_year = int(end_date.split("/")[0]) if end_date else None
+
         except Exception as e:
             print(f"Warning: Could not load configuration from config: {str(e)}")
             evaluation_metrics = {"metrics": []}
@@ -170,34 +192,63 @@ def enhance_dataset_references(csv_file_path: str) -> None:
                 f"Filtering out rows with excluded keywords: {', '.join(exclude_keywords)}"
             )
 
-            # Define text columns to check for excluded keywords
+            # Define text columns to check for excluded keywords - MODIFIED to only include title and abstract
             text_columns = [
                 "title",
                 "abstract",
-                "venue",
-                "authors",
-                "publication_types",
-                "fields_of_study",
             ]
 
-            # Create a mask for rows to keep (initially all True)
-            mask = pd.Series([True] * len(df))
+            # For each paper, track which keywords caused its exclusion
+            keyword_exclusions: dict = {i: [] for i in df.index}
 
-            # For each keyword, update mask to exclude matching rows
+            # For each keyword, check all rows
             for keyword in exclude_keywords:
                 for col in text_columns:
                     if col in df.columns:
-                        # Update mask to exclude rows where this keyword appears in this column
-                        mask = mask & ~df[col].astype(str).str.lower().str.contains(
-                            keyword.lower(), na=False
+                        # Find rows where this keyword appears
+                        matching_mask = (
+                            df[col]
+                            .astype(str)
+                            .str.lower()
+                            .str.contains(keyword.lower(), na=False)
                         )
 
-            # Apply the mask to filter the dataframe
-            df = df[mask]
+                        # Record the keyword for each matching row
+                        for idx in df.index[matching_mask]:
+                            keyword_exclusions[idx].append(f"{keyword} (in {col})")
+
+            # Mark rows with exclusion reasons
+            for idx, keywords in keyword_exclusions.items():
+                if keywords:
+                    df.at[idx, "exclusion_filter"] = "keyword"
+                    df.at[idx, "exclusion_reason"] = "; ".join(keywords)
+
+            # Add excluded rows to removed_df
+            keyword_mask = df["exclusion_filter"] == "keyword"
+            removed_df = pd.concat([removed_df, df[keyword_mask]])
+
+            # Filter out the excluded rows from main df
+            df = df[~keyword_mask]
+
+            keywords_filtered = sum(keyword_mask)
+            print(f"Removed {keywords_filtered} rows based on excluded keywords")
 
         # Filter out papers that don't mention any evaluation metric
         rows_before_metrics_filter = len(df)
-        df = df[df["evaluation_metrics"] != ""]
+
+        # Identify papers without evaluation metrics
+        no_metrics_mask = df["evaluation_metrics"] == ""
+
+        # Mark rows to be filtered
+        df.loc[no_metrics_mask, "exclusion_filter"] = "no_metrics"
+        df.loc[no_metrics_mask, "exclusion_reason"] = "No evaluation metrics"
+
+        # Add to removed_df
+        removed_df = pd.concat([removed_df, df[no_metrics_mask]])
+
+        # Filter the main df
+        df = df[~no_metrics_mask]
+
         metrics_filtered = rows_before_metrics_filter - len(df)
         print(f"Filtered out {metrics_filtered} papers without evaluation metrics")
 
@@ -206,27 +257,64 @@ def enhance_dataset_references(csv_file_path: str) -> None:
         if "year" in df.columns and start_year is not None and end_year is not None:
             rows_before_year_filter = len(df)
             print(f"Filtering papers to years {start_year}-{end_year}...")
+
             # Convert year to numeric, with errors='coerce' to handle non-numeric values
             df["year"] = pd.to_numeric(df["year"], errors="coerce")
-            # Filter to papers within year range
-            df = df[(df["year"] >= start_year) & (df["year"] <= end_year)]
+
+            # Identify papers outside year range
+            outside_year_mask = ~((df["year"] >= start_year) & (df["year"] <= end_year))
+
+            # Add exclusion reason
+            df.loc[outside_year_mask, "exclusion_filter"] = "year_range"
+            df.loc[outside_year_mask, "exclusion_reason"] = (
+                f"Outside year range {start_year}-{end_year}"
+            )
+
+            # Add to removed_df
+            removed_df = pd.concat([removed_df, df[outside_year_mask]])
+
+            # Filter the main df
+            df = df[~outside_year_mask]
+
             year_filtered = rows_before_year_filter - len(df)
             if year_filtered > 0:
-                print(f"Removed {year_filtered} papers outside year range {start_year}-{end_year}")
+                print(
+                    f"Removed {year_filtered} papers outside year range {start_year}-{end_year}"
+                )
 
         # Remove rows with citation_count less than 5
+        citation_filtered = 0
         if "citation_count" in df.columns:
             rows_before_citation_filter = len(df)
-            df = df[df["citation_count"] >= 5]
+
+            # Identify rows with low citation count
+            low_citation_mask = df["citation_count"] < 0
+
+            # Mark exclusion reason
+            df.loc[low_citation_mask, "exclusion_filter"] = "citation_count"
+            df.loc[low_citation_mask, "exclusion_reason"] = "Citation count < 0"
+
+            # Add to removed df
+            removed_df = pd.concat([removed_df, df[low_citation_mask]])
+
+            # Filter main df
+            df = df[~low_citation_mask]
+
             citation_filtered = rows_before_citation_filter - len(df)
             if citation_filtered > 0:
                 print(f"Removed {citation_filtered} papers with less than 5 citations")
         else:
-            citation_filtered = 0
             print("No citation_count column found, skipping citation filtering.")
+
+        # Remove exclusion columns from main df before saving
+        df = df.drop(columns=["exclusion_filter", "exclusion_reason"])
 
         # Save updated DataFrame
         df.to_csv(csv_file_path, index=False)
+
+        # Save removed entries to separate CSV
+        excluded_csv_path = csv_file_path.replace(".csv", "_excluded.csv")
+        removed_df.to_csv(excluded_csv_path, index=False)
 
         rows_after = len(df)
         rows_removed = rows_before - rows_after
@@ -239,14 +327,19 @@ def enhance_dataset_references(csv_file_path: str) -> None:
         if "paper_id" in df.columns:
             print(f"  - Rows removed for empty paper_id: {id_filtered}")
         if start_year is not None and end_year is not None:
-            print(f"  - Rows removed for being outside year range {start_year}-{end_year}: {year_filtered}")
-        print(f"  - Final number of rows: {rows_after}")
+            print(
+                f"  - Rows removed for being outside year range {start_year}-{end_year}: {year_filtered}"
+            )
         print(f"  - Rows removed for citation count < 5: {citation_filtered}")
+        print(f"  - Final number of rows: {rows_after}")
+        print(f"  - Excluded entries saved to: {excluded_csv_path}")
+
     except Exception as e:
         print(f"Error during dataset reference enhancement: {str(e)}")
         import traceback
 
         traceback.print_exc()
+
 
 if __name__ == "__main__":
     enhance_dataset_references(csv_file_path="data/csvs/info_citations.csv")
