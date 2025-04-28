@@ -1,6 +1,6 @@
 import pandas as pd
 
-csv1_path = "data/csvs/csv1.csv"
+csv1_path = "data/csvs/old.csv"
 csv2_path = "data/csvs/new_entries.csv"
 output_path = "data/csvs/combined.csv"
 
