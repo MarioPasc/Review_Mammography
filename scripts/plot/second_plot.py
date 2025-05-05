@@ -57,6 +57,16 @@ def create_visualization(excluded_df, included_df, manual_exclusions={}):
     filter_values = list(filter_counts.values())
 
     filter_types = [f.replace("_", " ").title() for f in filter_types]
+    # Sorte filter types by their values
+    print(filter_types, filter_values)  
+    # Sort filter types by their values
+    filter_types = [
+        x for _, x in sorted(zip(filter_values, filter_types), reverse=True)
+    ]
+    filter_values = sorted(
+        filter_values, reverse=True
+    )  # Sort values in descending order
+    print(filter_types, filter_values)
     axes[0].bar(filter_types, filter_values, color="salmon")
     axes[0].set_xlabel("Filter Type", fontsize=FONTSIZE)
     axes[0].set_ylabel("Number of Papers", fontsize=FONTSIZE)
@@ -123,7 +133,7 @@ def create_visualization(excluded_df, included_df, manual_exclusions={}):
     for ax, lbl in zip((axes[0], axes[1], axes[2]), labels):
         ax.text(
             -0.04,
-            1.016,  # x,y in Axes fraction units: just inside top‐left
+            1.025,  # x,y in Axes fraction units: just inside top‐left
             lbl,  # the label text
             transform=ax.transAxes,  # interpret x,y in [0,1]×[0,1] of the Axes
             fontsize=14,  # tweak as you like
@@ -141,7 +151,7 @@ if __name__ == "__main__":
     included_df = pd.read_csv("data/csvs/info_citations_included.csv")
 
     # Example manual exclusions (replace with your actual values)
-    manual_exclusions = {"Manual*": 5, "Duplicate": 119}
+    manual_exclusions = {"Duplicate": 119}
 
     fig = create_visualization(excluded_df, included_df, manual_exclusions)
     plt.savefig("citation_analysis.pdf", format="pdf", dpi=300, bbox_inches="tight")
