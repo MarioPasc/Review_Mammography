@@ -1,157 +1,162 @@
+#!/usr/bin/env python3
+"""Visual analytics for the citation-screening pipeline.
+
+Creates a 2 × 2 figure:
+a. OA × decision heat-map        b. automatic filter counts
+c. top keyword exclusions        d. manual-screening codes (1–7)
+"""
+
+from pathlib import Path
+from typing import Mapping
+
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-import numpy as np
 
-FONTSIZE = 18
+FONTSIZE = 16  # single point of control
 
-import scienceplots
-
-plt.style.use(["science", "ieee"])
-
-
-def extract_keywords(reason_str):
-    """Extract keywords from exclusion reasons, ignoring location modifiers."""
-    if pd.isna(reason_str):
-        return []
-
-    keywords = []
-    parts = str(reason_str).split(";")
-    for part in parts:
-        part = part.strip()
-        # Remove location context (in abstract/in title)
-        if "(" in part:
-            keyword = part.split("(")[0].strip()
-        else:
-            keyword = part
-        keywords.append(keyword)
-    return keywords
+#: Mapping between manual numeric codes and their semantics (Neurocomputing style).
+MANUAL_CODES: dict[int, str] = {
+    1: "No-Access",
+    2: "Book",
+    3: "Not mammography-specific task",
+    4: "Unspecified #images",
+    5: "Out of scope",
+    6: "ML but not DL",
+    7: "Private dataset",
+}
 
 
-def create_visualization(excluded_df, included_df, manual_exclusions={}):
+# -----------------------------------------------------------------------------#
+#                               helper functions                               #
+# -----------------------------------------------------------------------------#
+def load_csv(path: str | Path) -> pd.DataFrame:
+    """Return *path* as a pandas table."""
+    return pd.read_csv(Path(path))
+
+
+def strip_location_modifiers(txt: str) -> str:
+    """Delete trailing “(in title)”, “(in abstract)”, … substrings."""
+    return txt.split("(")[0].strip()
+
+
+def explode_keywords(reason: pd.Series) -> pd.Series:
     """
-    Create 1x3 subplots for citation data analysis.
-
-    Parameters:
-    -----------
-    excluded_df : DataFrame
-        DataFrame containing excluded citations
-    included_df : DataFrame
-        DataFrame containing included citations
-    manual_exclusions : dict
-        Dictionary of additional exclusion counts to add {filter_type: count}
+    ➔ One keyword per row for every record whose `exclusion_reason`
+    contains a semicolon-separated list.
     """
-    fig, axes = plt.subplots(1, 3, figsize=(18, 6), sharey=False)
-
-    # Plot 1: Excluded papers by filter type
-    filter_counts = excluded_df["exclusion_filter"].value_counts().to_dict()
-
-    # Add manual exclusions to the counts
-    for filter_type, count in manual_exclusions.items():
-        if filter_type in filter_counts:
-            filter_counts[filter_type] += count
-        else:
-            filter_counts[filter_type] = count
-
-    filter_types = list(filter_counts.keys())
-    filter_values = list(filter_counts.values())
-
-    filter_types = [f.replace("_", " ").title() for f in filter_types]
-    # Sorte filter types by their values
-    print(filter_types, filter_values)  
-    # Sort filter types by their values
-    filter_types = [
-        x for _, x in sorted(zip(filter_values, filter_types), reverse=True)
-    ]
-    filter_values = sorted(
-        filter_values, reverse=True
-    )  # Sort values in descending order
-    print(filter_types, filter_values)
-    axes[0].bar(filter_types, filter_values, color="salmon")
-    axes[0].set_xlabel("Filter Type", fontsize=FONTSIZE)
-    axes[0].set_ylabel("Number of Papers", fontsize=FONTSIZE)
-    axes[0].tick_params(axis="x", rotation=90)
-
-    # Plot 2: Exclusion keywords for entries with exclusion_filter='keyword'
-    keyword_filtered = excluded_df[excluded_df["exclusion_filter"] == "keyword"]
-
-    # Extract all keywords, ignoring whether they're in title or abstract
-    all_keywords = []
-    for reason in keyword_filtered["exclusion_reason"]:
-        keywords = extract_keywords(reason)
-        all_keywords.extend(keywords)
-
-    keyword_counts = pd.Series(all_keywords).value_counts()
-
-    # Limit to top keywords if there are too many
-
-    axes[1].bar(
-        [k.title() for k in keyword_counts.index],
-        keyword_counts.values,
-        color="lightblue",
+    return (
+        reason.dropna()
+        .str.split(";")
+        .explode()
+        .map(strip_location_modifiers)
+        .str.title()
     )
-    axes[1].set_xlabel("Keyword", fontsize=FONTSIZE)
-    # axes[1].set_ylabel("Number of Papers", fontsize=12)
-    axes[1].tick_params(axis="x", rotation=90)
 
-    # Plot 3: 2x2 heatmap (included/excluded vs open-access/not open-access)
-    heatmap_data = pd.DataFrame(
+def _coerce_open_access(s: pd.Series) -> pd.Series:
+    """Return a clean Boolean Series; treat missing / 0 / False as closed."""
+    return (
+        s.fillna(False)          # NaN  →  False
+         .astype(int)            # 0/1/True/False → 0/1
+         .astype(bool)           # 0 → False, 1 → True
+    )
+
+# -----------------------------------------------------------------------------#
+#                                main function                                 #
+# -----------------------------------------------------------------------------#
+def make_figure(
+    excluded: pd.DataFrame,
+    included: pd.DataFrame,
+    manual_extra: Mapping[int, int] | None = None,
+) -> plt.Figure:
+    """Build and return the requested 2 × 2 matplotlib Figure."""
+    manual_extra = manual_extra or {}
+    included = included.copy()
+    excluded = excluded.copy()
+
+    included["is_open_access"] = _coerce_open_access(included["is_open_access"])
+    excluded["is_open_access"] = _coerce_open_access(excluded["is_open_access"])
+    fig, axes = plt.subplots(2, 2, figsize=(16, 12))
+    (ax_oa, ax_filter), (ax_kw, ax_manual) = axes
+
+    # a) OA vs decision --------------------------------------------------------
+    oa_tab = pd.DataFrame(
         {
             "Open Access": [
-                sum(included_df["is_open_access"] == True),
-                sum(excluded_df["is_open_access"] == True),
+                included["is_open_access"].sum(),
+                excluded["is_open_access"].sum(),
             ],
-            "Not Open Access": [
-                sum(included_df["is_open_access"] == False),
-                sum(excluded_df["is_open_access"] == False),
+            "Closed": [
+                (~included["is_open_access"]).sum(),
+                (~excluded["is_open_access"]).sum(),
             ],
         },
         index=["Included", "Excluded"],
     )
-
-    # Plot the heatmap with percentages
     sns.heatmap(
-        heatmap_data,
+        oa_tab,
         annot=True,
         fmt="d",
         cmap="YlGnBu",
-        ax=axes[2],
-        annot_kws={"size": FONTSIZE},
+        cbar=False,
+        ax=ax_oa,
+        annot_kws={"fontsize": FONTSIZE},
     )
+    ax_oa.set_title("a. Open-access status", loc="left", fontweight="bold")
 
-    for ax in axes:
-        ax.tick_params(axis="both", labelsize=FONTSIZE - 2)  # Setting tick label size
+    # b) automatic filter counts ----------------------------------------------
+    filt_counts = (
+        excluded["exclusion_filter"]
+        .value_counts()
+        .sort_values(ascending=True)  # horizontal bar: smallest at bottom
+    )
+    ax_filter.barh(
+        filt_counts.index.str.replace("_", " ").str.title(), filt_counts.values
+    )
+    ax_filter.set_xlabel("Number of records")
+    ax_filter.set_title("b. Automatic filter", loc="left", fontweight="bold")
 
-        ax.spines["top"].set_visible(False)
-        ax.spines["right"].set_visible(False)
-        ax.tick_params(top=False, right=False, which="both", direction="in")
-        ax.grid(False)
-        if ax == axes[2]:
-            ax.tick_params(bottom=False, left=False, which="both", direction="in")
+    # c) top keyword exclusions ------------------------------------------------
+    kw_tokens = explode_keywords(
+        excluded.loc[excluded["exclusion_filter"] == "keyword", "exclusion_reason"]
+    )
+    kw_counts = kw_tokens.value_counts().head(20)  # keep figure readable
+    ax_kw.barh(kw_counts.index, kw_counts.values, color="steelblue")
+    ax_kw.set_xlabel("Number of records")
+    ax_kw.set_title("c. Frequent keywords", loc="left", fontweight="bold")
+    ax_kw.invert_yaxis()
 
-    labels = ["a.", "b.", "c."]
-    for ax, lbl in zip((axes[0], axes[1], axes[2]), labels):
-        ax.text(
-            -0.04,
-            1.025,  # x,y in Axes fraction units: just inside top‐left
-            lbl,  # the label text
-            transform=ax.transAxes,  # interpret x,y in [0,1]×[0,1] of the Axes
-            fontsize=14,  # tweak as you like
-            fontweight="bold",
-            va="top",  # vertical alignment at the top of the text
-            ha="left",  # horizontal alignment at the left of the text
-        )
-    plt.tight_layout()
+    # d) manual codes ----------------------------------------------------------
+    manual_counts = (
+        excluded.loc[excluded["exclusion_filter"] == "manual", "exclusion_reason"]
+        .astype(int)
+        .value_counts()
+        .add(pd.Series(manual_extra), fill_value=0)
+        .reindex(range(1, 8), fill_value=0)
+        .astype(int)
+    )
+    ax_manual.bar(manual_counts.index, manual_counts.values, color="firebrick")
+    ax_manual.set_xticks(manual_counts.index, labels=manual_counts.index)
+    ax_manual.set_xlabel("Manual code")
+    ax_manual.set_ylabel("Number of records")
+    ax_manual.set_title("d. Manual screening", loc="left", fontweight="bold")
+
+    # global aesthetics --------------------------------------------------------
+    for ax in axes.flat:
+        ax.tick_params(labelsize=FONTSIZE - 2)
+        for spine in ("top", "right"):
+            ax.spines[spine].set_visible(False)
+
+    fig.tight_layout()
     return fig
 
 
-# Example usage
+# -----------------------------------------------------------------------------#
+#                        (optional) entry point for CLI                         #
+# -----------------------------------------------------------------------------#
 if __name__ == "__main__":
-    excluded_df = pd.read_csv("data/csvs/info_citations_excluded.csv")
-    included_df = pd.read_csv("data/csvs/info_citations_included.csv")
-
-    # Example manual exclusions (replace with your actual values)
-    manual_exclusions = {"Duplicate": 119}
-
-    fig = create_visualization(excluded_df, included_df, manual_exclusions)
-    plt.savefig("citation_analysis.pdf", format="pdf", dpi=300, bbox_inches="tight")
+    EXCL = load_csv("data/csvs/info_citations_excluded.csv")
+    INCL = load_csv("data/csvs/info_citations_included.csv")
+    # any hand-count corrections can be injected here, e.g. {1: 3, 7: 1}
+    FIG = make_figure(EXCL, INCL)
+    FIG.savefig("citation_screening.pdf", dpi=300, bbox_inches="tight")
