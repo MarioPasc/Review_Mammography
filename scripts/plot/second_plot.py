@@ -129,7 +129,7 @@ def make_figure(
     # d) manual codes ----------------------------------------------------------
     manual_counts = (
         excluded.loc[excluded["exclusion_filter"] == "manual", "exclusion_reason"]
-        .astype(int)
+        .astype(float).astype(int)   # codes are stored as "3.0", not "3"
         .value_counts()
         .add(pd.Series(manual_extra), fill_value=0)
         .reindex(range(1, 8), fill_value=0)
@@ -155,8 +155,9 @@ def make_figure(
 #                        (optional) entry point for CLI                         #
 # -----------------------------------------------------------------------------#
 if __name__ == "__main__":
+    Path("data/plots").mkdir(parents=True, exist_ok=True)
     EXCL = load_csv("data/csvs/info_citations_excluded.csv")
     INCL = load_csv("data/csvs/info_citations_included.csv")
     # any hand-count corrections can be injected here, e.g. {1: 3, 7: 1}
     FIG = make_figure(EXCL, INCL)
-    FIG.savefig("citation_screening.pdf", dpi=300, bbox_inches="tight")
+    FIG.savefig("data/plots/citation_screening.pdf", dpi=300, bbox_inches="tight")

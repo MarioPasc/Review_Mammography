@@ -175,3 +175,5 @@ cython_debug/
 
 # Other
 data/
+!data/csvs/
+!data/csvs/*.csv

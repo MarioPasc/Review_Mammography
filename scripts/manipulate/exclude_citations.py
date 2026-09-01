@@ -2,9 +2,9 @@ import pandas as pd
 import numpy as np # Import numpy for NaN handling if needed
 
 # Define file paths (adjust if necessary)
-reason_file = '/home/mario/Python/Projects/Review_Mammography/data/csvs/info_citations_exclusion_reason.csv'
-included_file = '/home/mario/Python/Projects/Review_Mammography/data/csvs/info_citations_included.csv'
-excluded_file = '/home/mario/Python/Projects/Review_Mammography/data/csvs/info_citations_excluded.csv'
+reason_file = 'data/csvs/info_citations_exclusion_reason.csv'
+included_file = 'data/csvs/info_citations_included.csv'
+excluded_file = 'data/csvs/info_citations_excluded.csv'
 
 try:
     # 1. Read the reason file and identify papers to move

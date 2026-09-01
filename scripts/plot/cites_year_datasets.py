@@ -188,9 +188,9 @@ def create_enhanced_visualization(data, output_path, vertical_heights=None):
 if __name__ == "__main__":
     # File paths
     json_file = (
-        "/home/mariopasc/Python/Projects/Review_Mammography/data/csvs/info_raw.json"
+        "data/csvs/info_raw.json"
     )
-    output_file = "/home/mariopasc/Python/Projects/Review_Mammography/data/plots/dataset_citations_enhanced.svg"
+    output_file = "data/plots/dataset_citations_enhanced.svg"
 
     # Create custom vertical heights for specific publication years
     # Values are proportions of the y-axis (0.0 to 1.0)
