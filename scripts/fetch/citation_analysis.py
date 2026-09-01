@@ -39,7 +39,7 @@ DATASET_MAPPING = {
     "10.48550/arXiv.2202.04073": "EMBED",
     "corpusid:246680284": "EMBED",
     "10.1148/ryai.220072": "ADMANI",
-    "10.48550/arXiv.2411.02710": "BCDR",
+    "10.1007/s11548-013-0838-2": "BCDR",
     "corpusid:273821203": "BCDR",
 }
 
